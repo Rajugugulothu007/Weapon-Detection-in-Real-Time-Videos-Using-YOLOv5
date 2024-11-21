@@ -1,0 +1,58 @@
+#Load the YOlov5
+!git clone https://github.com/ultralytics/yolov5  # clone
+%cd yolov5
+%pip install -qr requirements.txt comet_ml  # install
+import torch
+import utils
+display = utils.notebook_init()
+#Prepare a customized dataset by importing Some Labelled Images,upload it on Colab as a Zip File and UNZIP it.
+!unzip -q ../train_data.zip -d ../ # train_data is a customized dataset
+#Train the model and add your YAML file name
+!python /content/yolov5/train.py --img 416 --batch-size 8 --epochs 100 --data /content/yolov5/data/custom_data.yaml --weights yolov5s.pt --cache # custom_data is a YAML file
+# upload the video and download it from results
+!python detect.py --weights runs/train/exp5/weights/best.pt --img 640 --conf 0.25 --source ../videoFile.mp4 # videoFile is the Video file
+# After training the Model download the best.pt file and place it in the below code
+# code for playing the video by loading the YOLOv5
+import cv2
+import torch
+import numpy as np
+# Load the YOLOv5 model
+path = 'C:/Users/PC/OneDrive/Desktop/best.pt'
+model = torch.hub.load('ultralytics/yolov5', 'custom', path, force_reload=True)
+# Open the video file
+cap = cv2.VideoCapture("C:/Users/PC/OneDrive/Desktop/videoFile.mp4")
+if not cap.isOpened():
+    print("Error: Unable to open video file.")
+    exit()
+count = 0
+while True:
+    ret, frame = cap.read()
+    if not ret:
+        break 
+    count += 1
+    if count % 3 != 0:
+        continue  # Process every 3rd frame to reduce computational load
+    # Resize the frame
+    frame = cv2.resize(frame, (1020, 600))
+    # Perform inference on the frame
+    results = model(frame)
+    # Extract detected classes
+    detected_classes = results.pandas().xyxy[0]['name'].tolist()
+    # Check if 'weapon' is in detected classes
+    if 'weapon' in detected_classes:
+        detection_text = "Weapon Detected"
+    else:
+        detection_text = "No Weapon Detected"
+    # Add detection status to the frame
+    cv2.putText(frame, detection_text, (50, 50), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2, cv2.LINE_AA)
+    # Render the frame with bounding boxes
+    frame = np.squeeze(results.render())
+    cv2.imshow("FRAME", frame)
+    # Press 'ESC' to exit
+    if cv2.waitKey(1) & 0xFF == 27:
+        break
+cap.release()
+cv2.destroyAllWindows()
+
+
+
